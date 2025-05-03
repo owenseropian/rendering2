@@ -1,0 +1,636 @@
+<head>
+  <title>
+  rendering
+  </title>
+  <style>
+    body {
+      background-color: black;
+    }
+    .pixel {
+        position: absolute;
+        z-index: 99;
+        mix-blend-mode: normal
+      }
+
+  </style>
+</head>
+
+<canvas id="myCanvas" width="1000" height="1000"></canvas>
+
+<script src="https://cdn.jsdelivr.net/gh/netizenorg/netnet-standard-library/build/nn.min.js"></script>
+<script>
+  /* global nn */
+  
+  function shape(vertices, triangles, vertex_colors) {
+    this.vertices = vertices
+    this.triangles = triangles
+    this.vertex_colors = vertex_colors
+  }
+  
+  const canvas = document.getElementById('myCanvas')
+  canvas.width = nn.width
+  canvas.height = nn.height
+  const ctx = canvas.getContext('2d')
+  
+  let im_w = nn.width
+  let im_h = nn.height
+  
+  //if cube is not loading change this to false
+  let weather = false
+  //if set too low (below 5) it will lag and maybe crash
+  let pixelated = 5
+  //set outlines to -1 to get none (0.03 - 0.1 best outlines)
+  let outlines = -1
+  //distance away from cube
+  let distance = 5
+  let fovy = 65
+  
+  let white = [1, 1, 1]
+  let black = [0.01, 0.01, 0.01]
+  
+  let cube1 = new shape(
+           [[-0.5, -0.5, 0.5],
+            [0.5, -0.5, 0.5],
+            [-0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [-0.5, -0.5, -0.5],
+            [0.5, -0.5, -0.5],
+            [-0.5, 0.5, -0.5],
+            [0.5, 0.5, -0.5]],
+           [[0, 1, 2],
+            [2, 1, 3],
+            [5, 4, 7],
+            [7, 4, 6],
+            [4, 0, 6],
+            [6, 0, 2],
+            [1, 5, 3],
+            [3, 5, 7],
+            [2, 3, 6],
+            [6, 3, 7],
+            [4, 5, 0],
+            [0, 5, 1]],
+           [[1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0]]
+  )
+  
+  let gr = (1 + Math.sqrt(5)) / 2
+  
+  let icosahedron = new shape(
+          [
+            [0, 1, gr],
+            [0, -1, gr],
+            [0, 1, -gr],
+            [0, -1, -gr],
+            [1, gr, 0],
+            [-1, gr, 0],
+            [1, -gr, 0],
+            [-1, -gr, 0],
+            [gr, 0, 1],
+            [gr, 0, -1],
+            [-gr, 0, 1],
+            [-gr, 0, -1],
+          ],
+          [
+            [4,5,0],
+            [4,5,2],
+            [6,7,1],
+            [6,7,3],
+            [0,1,8],
+            [0,1,10],
+            [2,3,9],
+            [2,3,11],
+            [8,9,4],
+            [8,9,6],
+            [10,11,5],
+            [10,11,7],
+            [4,0,8],
+            [4,2,9],
+            [5,0,10],
+            [5,2,11],
+            [6,1,8],
+            [6,3,9],
+            [7,1,10],
+            [7,3,11]
+            
+          ],
+          [
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0]
+          ]
+  )
+  let great_dodecahedron = new shape(
+          [
+            [0, 1, gr],
+            [0, -1, gr],
+            [0, 1, -gr],
+            [0, -1, -gr],
+            [1, gr, 0],
+            [-1, gr, 0],
+            [1, -gr, 0],
+            [-1, -gr, 0],
+            [gr, 0, 1],
+            [gr, 0, -1],
+            [-gr, 0, 1],
+            [-gr, 0, -1],
+            [0, 0, 0]
+          ],
+          [
+            [12,5,0],
+            [4,12,0],
+            [4,5,12],
+            [12,5,2],
+            [4,12,2],
+            [12,7,1],
+            [6,12,1],
+            [6,7,12],
+            [12,7,3],
+            [6,12,3],
+            [12,1,8],
+            [0,12,8],
+            [0,1,12],
+            [12,1,10],
+            [0,12,10],
+            [12,3,9],
+            [2,12,9],
+            [2,3,12],
+            [12,3,11],
+            [2,12,11],
+            [12,9,4],
+            [8,12,4],
+            [8,9,12],
+            [12,9,6],
+            [8,12,6],
+            [12,11,5],
+            [10,12,5],
+            [10,11,12],
+            [12,11,7],
+            [10,12,7],
+            [12,0,8],
+            [4,12,8],
+            [4,0,12],
+            [12,2,9],
+            [4,12,9],
+            [12,0,10],
+            [5,12,10],
+            [5,0,12],
+            [12,2,11],
+            [5,12,11],
+            [12,1,8],
+            [6,12,8],
+            [6,1,12],
+            [12,3,9],
+            [6,12,9],
+            [12,1,10],
+            [7,12,10],
+            [7,1,12],
+            [12,3,11],
+            [7,12,11]
+            
+          ],
+          [
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0],
+            [0, 1.0, 0.0],
+            white
+          ]
+  )
+  
+  console.log(great_dodecahedron)
+
+  
+  let e = [0, 0, distance]
+  
+  
+  const createSlider = function(min, max, start, step, num, func){
+    nn.create('input')
+      .set({
+        type: 'range',
+        min: min,
+        max: max,
+        value: start,
+        step: step
+      })
+      .addTo('body')
+      .on('input', (e) => {func(e)})
+      .css({
+        position: "absolute",
+        left: 10,
+        bottom: 10 + 20 * num,
+        width: nn.width - 20,
+        zIndex: 99999999999999999
+
+    })
+  }
+  
+  
+  function area_of_triangle(p1, p2, p3){
+    return (p1[0]*p2[1]+p2[0]*p3[1]+p3[0]*p1[1]-(p1[0]*p3[1]+p2[0]*p1[1]+p3[0]*p2[1]))/2
+  }
+  
+  function is_covered(triangle, x, y){
+    for (let i = 0; i < triangle.length; i++){
+     let coverage = (area_of_triangle([x+0.5,y+0.5],triangle[(i+1)%3],triangle[(i+2)%3])/area_of_triangle(triangle[0], triangle[1], triangle[2]))
+      if (coverage < 0 || coverage > 1){return false}
+    }
+    return true
+  }
+  
+  function vector_multiply(A, B){
+    let temp = []
+    for (let j = 0; j < A.length; j++){
+        temp.push(0)
+        for (let k = 0; k < B.length; k++){
+            temp[j] += A[k] * B[j][k]
+        }
+    }
+    return temp
+  }
+  
+  function normalize(A){
+    let mag = 0
+    for (let x = 0; x < A.length; x++){
+        mag += A[x]*A[x]}
+    mag = Math.sqrt(mag)
+    let temp = []
+    for (let x = 0; x < A.length; x++){
+        temp.push(A[x]/mag)}
+    return temp
+  }
+  
+  function cross_product(a, b){
+    return [a[1]*b[2] - a[2]*b[1],
+        a[2]*b[0] - a[0]*b[2],
+        a[0]*b[1] - a[1]*b[0]]
+  }
+  
+  function matrix_multiply(A, B){
+    let sol = []
+    for (let i = 0; i < A.length; i++){
+        let temp = []
+        for (let j = 0; j < A[0].length; j++){
+            temp.push(0)
+            for (let k = 0; k < B[0].length; k++){
+                temp[j] += A[i][k] * B[k][j]
+            }
+        }
+        sol.push(temp)
+    }
+    return sol
+  }
+  
+  function find_Mortho(l, r, b, t, f, n){
+    return [[2/(r-l), 0, 0, -(r+l)/(r-l)],
+                [0, 2/(t-b), 0, -(t+b)/(t-b)],
+                [0, 0, 2/(n-f), -(n+f)/(n-f)],
+                [0, 0, 0, 1]]
+  }
+  
+  function find_Mcam(e, g, t){
+    let w = normalize(g)
+    for (let i = 0; i < w.length; i++){
+        w[i] *= -1
+    }
+        
+    let u = normalize(cross_product(t,w))
+    let v = cross_product(w,u)
+    
+    let Mcam_1 = [[u[0], u[1], u[2], 0],
+                [v[0], v[1], v[2], 0],
+                [w[0], w[1], w[2], 0],
+                [0,0,0,1]]
+    let Mcam_2 = [[1, 0, 0, -1 * e[0]],
+                [0, 1, 0, -1 * e[1]],
+                [0, 0, 1, -1 * e[2]],
+                [0, 0, 0, 1]]
+        
+    return matrix_multiply(Mcam_1,Mcam_2)
+  }
+  
+  function render(shape, im_w, im_h, e, fovy){
+        
+    im_w = Math.round(im_w / pixelated)
+    im_h = Math.round(im_h / pixelated)
+    
+    let img = []
+    let z_buffer = []
+    for (let x = 0; x < im_w; x++) {
+        img[x] = []
+        z_buffer[x] = []
+        for (let y = 0; y < im_h; y++) {
+            img[x][y] = [0, 0, 0]
+            z_buffer[x][y] = -Infinity
+        }
+    }
+
+    let g = []
+    for (let i = 0; i < e.length; i++){
+        g.push(e[i] * -1)
+    }
+    let t = [0, 1, 0]
+    
+    let Mcam = find_Mcam(e, g, t)
+    
+    let aspect = im_w/im_h
+    let n = -1
+    let f = -100
+    
+    t = Math.tan((fovy/2)*(2*Math.PI/360)) * n
+    let b = -t
+    
+    let r = aspect * t
+    let l = -r
+    
+    let Mortho = find_Mortho(l, r, b, t, f, n)
+    //change to Mper
+    let P = [[n, 0, 0, 0],
+            [0, n, 0, 0],
+            [0, 0, (n+f), -f*n],
+            [0, 0, 1, 0]]
+    let Mper = matrix_multiply(Mortho, P)
+    
+    let Mvp =  [[im_w/2, 0, 0, im_w/2],
+            [0, im_h/2, 0, im_h/2],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]]
+    
+    let new_vertices = []
+    
+    for (let i = 0; i < shape.vertices.length; i++){
+        new_vertices.push(shape.vertices[i])
+        if (new_vertices[i].length < 4){
+          new_vertices[i].push(1)}
+    }
+
+    for (let x = 0; x < new_vertices.length; x++){
+        new_vertices[x] = vector_multiply(new_vertices[x], Mcam)}
+        
+    for (let x = 0; x < new_vertices.length; x++){
+        new_vertices[x] = vector_multiply(new_vertices[x], Mper)}
+        
+    for (let x = 0; x < new_vertices.length; x++){
+        for (let i = 0; i < new_vertices[x].length; i++){
+            new_vertices[x][i] /= new_vertices[x][3]}
+    }
+        
+    for (let x = 0; x < new_vertices.length; x++){
+        new_vertices[x] = vector_multiply(new_vertices[x], Mvp)}
+        
+    for (let x = 0; x < new_vertices.length; x++){
+        new_vertices[x].pop()
+    }
+    
+    let total_x_min = im_w
+    let total_x_max = 0
+    let total_y_min = im_h
+    let total_y_max = 0
+            
+    for (let i = 0; i < shape.triangles.length; i++){
+        let triangle = []
+        let colors = []
+        let x_min = im_w
+        let y_min = im_h
+        let x_max = 0
+        let y_max = 0
+        for(let j = 0; j < shape.triangles[i].length; j++){
+            let vertex = shape.triangles[i][j]
+            triangle.push(new_vertices[vertex])
+            colors.push(shape.vertex_colors[vertex])
+            x_min = Math.min(x_min, new_vertices[vertex][0])
+            y_min = Math.min(y_min, new_vertices[vertex][1])
+            x_max = Math.max(x_max, new_vertices[vertex][0])
+            y_max = Math.max(y_max, new_vertices[vertex][1])
+        }
+        x_min = Math.floor(Math.max(x_min, 0))
+        y_min = Math.floor(Math.max(y_min, 0))
+        x_max = Math.ceil(Math.min(x_max, im_w))
+        y_max = Math.ceil(Math.min(y_max, im_h))
+        total_x_min = Math.min(x_min, total_x_min)
+        total_x_max = Math.max(x_max, total_x_max)
+        total_y_min = Math.min(y_min, total_y_min)
+        total_y_max = Math.max(y_max, total_y_max)
+        let triangle_area = area_of_triangle(triangle[0],triangle[1],triangle[2])
+        for (let x = x_min; x < x_max; x++){
+            for (let y = y_min; y < y_max; y++){
+                if(is_covered(triangle, x, y)){
+                    let color = [0, 0, 0]
+                    let z = 0
+                    let min_coverage = 1
+                    for (let j = 0; j < colors.length; j++){
+                        let coverage = area_of_triangle([x,y],triangle[(j+1)%3],triangle[(j+2)%3])/triangle_area
+                        for (let k = 0; k < colors[j].length; k++){
+                        color[k] += coverage * colors[j][k]}  
+                        z += coverage * triangle[j][2]
+                        min_coverage = Math.min(min_coverage, coverage)
+                    }
+                    //Outline Triangles
+                    // if (min_coverage < outlines){
+                    //   color = white
+                    // }
+                    if (z > z_buffer[x][y]){
+                        z_buffer[x][y] = z
+                        img[x][y] = color
+                    }
+                }
+            }
+        }
+    }
+    //Outline outer edges
+    for (let x = total_x_min; x < total_x_max; x++){
+      for (let y = total_y_min; y < total_y_max; y++){
+        for (let k = 0; k < 4; k++){
+          if ((z_buffer[x][y] - 0.1) > z_buffer[x + k%2 * Math.pow(-1, Math.floor(k/2))][y + (k+1)%2 * Math.pow(-1, Math.floor(k/2))]){
+            img[x][y] = white
+          }
+        }
+      }
+    }
+          
+    return img
+  }
+  
+  function draw(img){
+    for (let x = 0; x < img.length; x++){
+      for (let y = 0; y < img[x].length; y++){
+        let black = true
+        for (let k = 0; k < img[x][y].length; k++){
+          if (img[x][y][k] !== 0){
+            black = false
+          }
+        }
+        if (!black){
+          ctx.fillStyle = `rgb(${img[x][y].map(c => c * 255).join(',')})`
+          ctx.fillRect(x*pixelated, y*pixelated, pixelated, pixelated)
+        }
+      }
+    }
+  }
+  
+  function deleteAll(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }
+  
+  function redraw(shape){
+    let img = render(shape, im_w, im_h, e, fovy)
+    deleteAll()
+    draw(img)
+  }
+  
+  function rotate(shape) {
+    requestAnimationFrame(rotate)
+    let angle = 0.1 * (2*Math.PI/360)
+    let rotateX = [
+        [Math.cos(angle), 0, Math.sin(angle)],
+        [0, 1, 0],
+        [-Math.sin(angle), 0, Math.cos(angle)],
+      ]
+    e = vector_multiply(e, rotateX)
+    redraw(shape)
+  }
+  
+  async function setup(shape){
+    
+    // navigator.geolocation.getCurrentPosition((e) => {
+    //   console.log(e.coords.latitude)
+    // })
+    
+    
+    if(weather){const gps = await nn.askForGPS()
+    
+    const pointURL = `https://api.weather.gov/points/${gps.lat},${gps.lng}`
+    const nws1 = await fetch(pointURL)
+    const pointData = await nws1.json()
+    const forecastURL = pointData.properties.forecast
+    const nws2 = await fetch(forecastURL)
+    const forecast = await nws2.json()
+    
+    let periods = []
+    for (let i = 0; i < 14; i++){
+      periods[i] = forecast.properties.periods[i].temperature
+    }
+    let max = periods[0]
+    for (let i = 1; i < periods.length; i++) {
+      if (periods[i] > max) {
+        max = periods[i]
+      }
+    }
+    for (let i = 0; i < 14; i++){
+      periods[i] /= max
+    }
+    console.log(forecast)
+    for (let x = 0; x < shape.vertex_colors.length; x++){
+      for (let y = 0; y < 3; y++){
+        shape.vertex_colors[x][y] = nn.random(periods)
+      }
+    }
+    // cube1.vertex_colors = [
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //         [nn.random(periods), nn.random(periods), nn.random(periods)],
+    //     ]
+               }
+    
+    let img = render(shape, im_w, im_h, e, fovy)
+    draw(img)
+    
+    createSlider(1, 50, pixelated, 1, 0, (e) => {
+    pixelated = Number(e.target.value)
+    redraw(shape)
+  })
+    //rotate(shape)
+  }
+  
+
+
+  let drawn_shape = great_dodecahedron
+  nn.on("load", setup(drawn_shape))
+  
+  
+  let dragging = false
+  let startX
+  let startY
+  
+  nn.on("mousedown", () => {
+    dragging = true
+    startX = nn.mouseX
+    startY = nn.mouseY
+  })
+  
+  nn.on("mouseup", () => {
+    dragging = false
+  })
+  
+  nn.on("mousemove", () => {
+    if (dragging){
+      const diffX = nn.mouseX - startX
+      const diffY = nn.mouseY - startY
+      let angleX = diffX * (2*Math.PI/360) / 5
+      let angleY = diffY * (2*Math.PI/360) / 5
+      let rotateY = [
+        [1, 0, 0, 0],
+        [0, Math.cos(angleY), -Math.sin(angleY), 0],
+        [0, Math.sin(angleY), Math.cos(angleY), 0],
+        [0, 0, 0, 1]
+      ]
+      let rotateX = [
+        [Math.cos(angleX), 0, -Math.sin(angleX), 0],
+        [0, 1, 0, 0],
+        [Math.sin(angleX), 0, Math.cos(angleX), 0],
+        [0, 0, 0, 1]
+      ]
+      let rotate = matrix_multiply(rotateX, rotateY)
+      
+      for (let x = 0; x < drawn_shape.vertices.length; x++){
+        console.log(drawn_shape.vertices[x])
+        drawn_shape.vertices[x] = vector_multiply(drawn_shape.vertices[x], rotate)
+      }
+      
+      // e = vector_multiply(e, rotate)
+      redraw(drawn_shape)
+      startX = nn.mouseX
+      startY = nn.mouseY
+    }
+  })
+  
+  nn.on("mousewheel", (f) => {
+    if(f.deltaY > 0){
+      fovy -= 1
+    }
+    else if (f.deltaY < 0){
+      fovy += 1
+    }
+    
+    redraw(drawn_shape)
+  })
+  
+  
+</script>
